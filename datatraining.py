@@ -1,56 +1,78 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.metrics import mean_squared_error
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.preprocessing import LabelEncoder
 import joblib
 
-# Load the dataset
-data = pd.read_csv(r'C:\Users\vydurya M N\OneDrive\Desktop\fertilizationtreatment\sucessrateprediction\balanced_filtered_data.csv')
+# Load the balanced CSV file
+file_path = r"C:\Users\vydurya M N\OneDrive\Desktop\fertilizationtreatment\balanced_filtered_data.csv"
+df = pd.read_csv(file_path)
 
-# Select features and target variable
+# Strip any leading/trailing spaces from column names
+df.columns = df.columns.str.strip()
+
+# List of features to use for training
 features = [
-    'Patient Age at Treatment',
-    'Date patient started trying to become pregnant OR date of last pregnancy',
-    'Total Number of Previous cycles, Both IVF and DI',
-    'Total number of previous pregnancies, Both IVF and DI',
-    'Type of Infertility - Female Primary',
-    'Type of Infertility - Female Secondary',
-    'Type of Infertility - Male Primary',
-    'Type of Infertility - Male Secondary',
-    'Cause  of Infertility - Tubal disease',
-    'Cause of Infertility - Ovulatory Disorder',
-    'Cause of Infertility - Male Factor',
-    'Cause of Infertility - Endometriosis',
-    'Cause of Infertility - Cervical factors',
-    'Cause of Infertility - Female Factors',
-    'Egg Donor Age at Registration',
-    'Sperm Donor Age at Registration',
-    'Specific treatment type'
+    "Patient Age at Treatment",
+    "Date patient started trying to become pregnant OR date of last pregnancy",
+    "Type of Infertility - Female Primary",
+    "Type of Infertility - Female Secondary",
+    "Type of Infertility - Male Primary",
+    "Type of Infertility - Male Secondary",
+    "Cause  of Infertility - Tubal disease",
+    "Cause of Infertility - Ovulatory Disorder",
+    "Cause of Infertility - Male Factor",
+    "Cause of Infertility - Patient Unexplained",
+    "Cause of Infertility - Endometriosis",
+    "Cause of Infertility - Cervical factors",
+    "Cause of Infertility - Female Factors",
+    "Cause of Infertility - Partner Sperm Concentration",
+    "Cause of Infertility -  Partner Sperm Morphology",
+    "Causes of Infertility - Partner Sperm Motility",
+    "Cause of Infertility -  Partner Sperm Immunological factors"
 ]
 
-target = 'Number of Live Births'
+# Check if all feature columns exist
+missing_columns = [col for col in features if col not in df.columns]
+if missing_columns:
+    print(f"Missing columns: {missing_columns}")
 
-# Prepare the features and target variables
-X = data[features]
-y = data[target]
+# Handle missing values (if any)
+df = df.dropna(subset=features + ["Specific treatment type"])
 
-# Convert categorical variables into dummy/indicator variables
-X = pd.get_dummies(X, drop_first=True)
+# Encode the target variable (Specific treatment type)
+target = "Specific treatment type"
+label_encoder = LabelEncoder()
+df[target] = label_encoder.fit_transform(df[target])
 
-# Split data into training and testing sets
+# Convert features to numeric (if they are not already)
+for col in features:
+    if df[col].dtype == 'object':
+        df[col] = label_encoder.fit_transform(df[col].astype(str))
+
+# Split the dataset into features (X) and target (y)
+X = df[features]
+y = df[target]
+
+# Split the data into training and testing sets (80% training, 20% testing)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Initialize the Decision Tree model
-model = DecisionTreeRegressor()
-
-# Train the model
+# Train a Decision Tree model
+model = DecisionTreeClassifier(random_state=42)
 model.fit(X_train, y_train)
 
-# Predict and evaluate the model
+# Make predictions on the test set
 y_pred = model.predict(X_test)
-mse = mean_squared_error(y_test, y_pred)
-print(f'Mean Squared Error: {mse}')
 
-# Save the model
-joblib.dump(model, 'decision_tree_model1.pkl')
-print('Model saved as decision_tree_model1.pkl')
+# Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
+
+# Save the trained model (optional)
+model_path = r"C:\Users\vydurya M N\OneDrive\Desktop\fertilizationtreatment\decision_tree_model.pkl"
+joblib.dump(model, model_path)
+joblib.dump(label_encoder, r"C:\Users\vydurya M N\OneDrive\Desktop\fertilizationtreatment\label_encoder.pkl")
+
+print(f"Trained model saved to: {model_path}")
